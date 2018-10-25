@@ -1,35 +1,129 @@
-version: '2'
+version: '3'
+
 services:
-  nginx:
+  nginx-drgstr:
     restart: always
+    depends_on:
+      - phpfpm-drgstr 
     image: nginx:stable-alpine
     ports:
-      - "80:80"
-    links:
-      - phpfpm:phpfpm
+      - 80
+    environment:
+      VIRTUAL_HOST: drugstoresoft.com,www.drugstoresoft.com
+      LETSENCRYPT_HOST: drugstoresoft.com,www.drugstoresoft.com
+      LETSENCRYPT_EMAIL: admin:@drugstoresoft.com    
+
     volumes:
-      - ./config/nginx/vhost.conf:/etc/nginx/conf.d/default.conf
+      - ./config/nginx/drgstr.conf:/etc/nginx/conf.d/default.conf
       - ./log/nginx:/var/log/nginx
-      - ./cache/nginx:/var/cache/nginx
-      - ./www:/usr/share/nginx/html
-  phpfpm:
+      - ./cache/nginx/drgstr:/var/cache/nginx
+      - ./www/drgstr:/usr/share/nginx/html
+    container_name: nginx-drgstr    
+
+  nginx-sme40pos:
+    restart: always
+    depends_on:
+      - phpfpm-sme40pos      
+    image: nginx:stable-alpine
+    ports:
+      - 80
+    environment:
+      VIRTUAL_HOST: sme40pos.com,www.sme40pos.com
+      LETSENCRYPT_HOST: sme40pos.com,www.sme40pos.com
+      LETSENCRYPT_EMAIL: sme40pos@drugstoresoft.com    
+
+    volumes:
+      - ./config/nginx/sme40pos.conf:/etc/nginx/conf.d/default.conf
+      - ./log/nginx:/var/log/nginx
+      - ./cache/nginx/sme40pos:/var/cache/nginx
+      - ./www/sme40pos:/usr/share/nginx/html
+    container_name: nginx-sme40pos    
+
+  nginx-crks:
+    restart: always
+    depends_on:
+      - phpfpm-crks 
+    image: nginx:stable-alpine
+    ports:
+      - 80
+    environment:
+      VIRTUAL_HOST: chineseandrobot4kid.com,www.chineseandrobot4kid.com
+      LETSENCRYPT_HOST: chineseandrobot4kid.com,www.chineseandrobot4kid.com
+      LETSENCRYPT_EMAIL: crks:@drugstoresoft.com    
+
+    volumes:
+      - ./config/nginx/crks.conf:/etc/nginx/conf.d/default.conf
+      - ./log/nginx:/var/log/nginx
+      - ./cache/nginx/crks:/var/cache/nginx
+      - ./www/crks:/usr/share/nginx/html
+    container_name: nginx-crks    
+
+  phpfpm-drgstr:
     restart: always
     build: ./php-fpm-7
-    links:
-      - db:dockerdb
     volumes:
       - ./config/php-fpm/php-fpm.conf:/usr/local/etc/php-fpm.conf
       - ./config/php-fpm/php.ini:/usr/local/etc/php/php.ini
       - ./log/php-fpm:/var/log/php-fpm
-      - ./www:/usr/share/nginx/html
-  db:
+      - ./www/drgstr:/usr/share/nginx/html
+    container_name: phpfpm-drgstr   
+
+  phpfpm-sme40pos:
     restart: always
-    image: mariadb:10.1
+    build: ./php-fpm-7
+    volumes:
+      - ./config/php-fpm/php-fpm.conf:/usr/local/etc/php-fpm.conf
+      - ./config/php-fpm/php.ini:/usr/local/etc/php/php.ini
+      - ./log/php-fpm:/var/log/php-fpm
+      - ./www/sme40pos:/usr/share/nginx/html
+    container_name: phpfpm-sme40pos    
+
+  phpfpm-crks:
+    restart: always
+    build: ./php-fpm-7
+    volumes:
+      - ./config/php-fpm/php-fpm.conf:/usr/local/etc/php-fpm.conf
+      - ./config/php-fpm/php.ini:/usr/local/etc/php/php.ini
+      - ./log/php-fpm:/var/log/php-fpm
+      - ./www/crks:/usr/share/nginx/html
+    container_name: phpfpm-crks   
+
+  dockerdb:
+    restart: always
+    image: mariadb
     environment:
       MYSQL_ROOT_PASSWORD: 123456
       MYSQL_USER: user
       MYSQL_PASSWORD: password
-      MYSQL_DATABASE: database
+      #MYSQL_DATABASE: database
     volumes:
       - ./mysql/databases:/var/lib/mysql
       - ./log/mysql:/var/log/mysql
+    container_name: dockerdb
+  pma:
+    image: phpmyadmin/phpmyadmin
+    restart: always
+    depends_on:
+     - dockerdb       
+    #links:
+    # - dockerdb:db
+    ports:
+     - "8000:80"    
+    #expose:
+    # - 8000       
+    environment:
+      VIRTUAL_HOST: phpmyadmin.sme40pos.com
+      #VIRTUAL_PORT: 8000 
+      LETSENCRYPT_HOST: phpmyadmin.sme40pos.com 
+      LETSENCRYPT_EMAIL: sme40pos@drugstoresoft.com    
+      MYSQL_ROOT_PASSWORD: 123456
+      PMA_HOST: dockerdb
+      #PMA_PORT: 3306
+      PMA_ABSOLUTE_URI: http://phpmyadmin.sme40pos.com
+      PMA_ARBITRAY: 1
+    container_name: pma
+networks:
+  default:
+     external:
+        name: nginx-proxy
+
